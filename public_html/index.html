@@ -102,8 +102,11 @@
         throttle: 0,
         yaw: 0,
       };
+      var speed = 0.5;
 
       const useWebcam = false;
+
+      let notFoundCounter = 0;
 
       const webcamVideoEl = document.querySelector(
         "#videoFeed video#webcamVideo"
@@ -143,7 +146,10 @@
           useWebcam ? webcamVideoEl : droneCamCanvasEl
         );
 
+        const stickData = { pitch: 0, roll: 0, throttle: 0, yaw: 0 };
+
         if (detection) {
+          notFoundCounter = 0;
           context.clearRect(
             -canvasEl.width / 2,
             -canvasEl.height / 2,
@@ -152,13 +158,42 @@
           );
           const { relativeBox, relativeDistanceVector, area } =
             calculateDistanceVectors(detection);
-          
+
           drawDistanceVector(canvasEl, relativeDistanceVector);
           drawSizeVector(canvasEl, relativeBox);
           faceSizeEl.innerText = area;
+
+          stickData.throttle = controlThrottle(relativeDistanceVector);
+          sendCmd("stick", stickData);
+        } else {
+          notFoundCounter++;
+          if (notFoundCounter >= 5) {
+            sendCmd("stick", stickData);
+          }
         }
 
         setTimeout(() => onPlay());
+      }
+
+      function controlThrottle(relativeDistanceVector) {
+        const distanceYThresholdMin = -0.2;
+        const distanceYThresholdMax = 0.1;
+        const throttleWeight = 0.2;
+
+        if (
+          relativeDistanceVector[1] >= distanceYThresholdMin &&
+          relativeDistanceVector[1] <= distanceYThresholdMax
+        ) {
+          return 0;
+        } else {
+          const direction =
+            relativeDistanceVector[1] > distanceYThresholdMax
+              ? -1
+              : relativeDistanceVector[1] < distanceYThresholdMin
+              ? 1
+              : 0;
+          return throttleWeight * speed * direction;
+        }
       }
 
       function calculateDistanceVectors(detection) {
@@ -312,7 +347,6 @@
         };
       }
 
-      var speed = 0.5;
       function keyboardEvent(e) {
         if (
           kMap.Space === true &&
