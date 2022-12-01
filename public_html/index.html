@@ -164,6 +164,9 @@
           faceSizeEl.innerText = area;
 
           stickData.throttle = controlThrottle(relativeDistanceVector);
+          const { roll, yaw } = controlRollAndYaw(relativeDistanceVector);
+          stickData.roll = roll;
+          stickData.yaw = yaw;
           sendCmd("stick", stickData);
         } else {
           notFoundCounter++;
@@ -173,6 +176,39 @@
         }
 
         setTimeout(() => onPlay());
+      }
+
+      function controlRollAndYaw(relativeDistanceVector) {
+        const distanceXThresholdMin = -0.15;
+        const distanceXThresholdMax = 0.15;
+        const yawWeight = 0.7;
+        const rollWeight = 0.3;
+
+        let yaw = 0, roll = 0;
+
+        if (
+          relativeDistanceVector[0] < distanceXThresholdMin ||
+          relativeDistanceVector[0] > distanceXThresholdMax
+        ) {
+          yaw =
+            yawWeight *
+            speed *
+            (relativeDistanceVector[0] < distanceXThresholdMin
+              ? -1
+              : relativeDistanceVector[0] > distanceXThresholdMax
+              ? 1
+              : 0);
+          roll =
+            rollWeight *
+            speed *
+            (relativeDistanceVector[0] < distanceXThresholdMin
+              ? -1
+              : relativeDistanceVector[0] > distanceXThresholdMax
+              ? 1
+              : 0);
+        }
+
+        return { yaw, roll };
       }
 
       function controlThrottle(relativeDistanceVector) {
