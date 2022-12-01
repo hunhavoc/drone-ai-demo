@@ -16,6 +16,10 @@
       width: 480px;
       height: 360px;
     }
+
+    canvas#draw {
+      z-index: 1;
+    }
   </style>
   <body>
     <div class="container-fluid">
@@ -47,10 +51,12 @@
         <div class="col-6">
           <div id="videoFeed">
             <video id="webcamVideo"></video>
-            <canvas></canvas>
+            <canvas id="draw"></canvas>
           </div>
         </div>
-        <div class="col-4">Face size (distance from camera): <span id="faceSize">-</span></div>
+        <div class="col-4">
+          Face size (distance from camera): <span id="faceSize">-</span>
+        </div>
         <div class="col-2">
           <div id="settings">
             <select class="settings ev" id="settings-ev">
@@ -97,12 +103,13 @@
         yaw: 0,
       };
 
-      const useWebcam = true;
+      const useWebcam = false;
 
-      const videoEl = document.querySelector("#videoFeed video");
-      const canvasEl = document.querySelector("#videoFeed canvas");
+      const webcamVideoEl = document.querySelector("#videoFeed video#webcamVideo");
+      const canvasEl = document.querySelector("#videoFeed canvas#draw");
       const context = canvasEl.getContext("2d");
       const faceSizeEl = document.querySelector("#faceSize");
+      
 
       async function initFaceDetection() {
         await faceapi.loadSsdMobilenetv1Model("models");
@@ -114,11 +121,22 @@
       }
 
       async function onPlay() {
-        if (!canvasEl || !videoEl || videoEl.paused || videoEl.ended) {
+
+        const droneCamCanvasEl = document.querySelector(
+          "#videoFeed canvas:not(#draw)"
+        );
+
+        if (useWebcam) {
+          if (!canvasEl || !webcamVideoEl || webcamVideoEl.paused || webcamVideoEl.ended) {
+            return setTimeout(() => onPlay(), 1000);
+          }
+        } else if (!canvasEl || !droneCamCanvasEl) {
           return setTimeout(() => onPlay(), 1000);
         }
-
-        const detection = await faceapi.detectSingleFace(videoEl);
+       
+        const detection = await faceapi.detectSingleFace(
+          useWebcam ? webcamVideoEl : droneCamCanvasEl
+        );
 
         context.clearRect(
           -canvasEl.width / 2,
@@ -128,7 +146,7 @@
         );
 
         if (detection) {
-          // const dims = faceapi.matchDimensions(canvasEl, videoEl, true);
+          // const dims = faceapi.matchDimensions(canvasEl, webcamVideoEl, true);
           // faceapi.draw.drawDetections(
           //   canvasEl,
           //   faceapi.resizeResults(detection, dims)
@@ -144,10 +162,10 @@
             centerVectorOfDetectedFace[1] - 0.5,
           ];
           console.log(this.relativeDistanceVector);
-          
+
           drawDistanceVector(canvasEl, this.relativeDistanceVector);
           drawSizeVector(canvasEl, relativeBox);
-          
+
           const area = relativeBox.width * relativeBox.height;
           faceSizeEl.innerText = area;
         }
@@ -265,9 +283,8 @@
             navigator.mediaDevices
               .getUserMedia({ video: true })
               .then((stream) => {
-                const videoEl = document.getElementById("webcamVideo");
-                videoEl.srcObject = stream;
-                videoEl.play();
+                webcamVideoEl.srcObject = stream;
+                webcamVideoEl.play();
               });
           }
           return;
