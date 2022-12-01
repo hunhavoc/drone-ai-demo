@@ -1,266 +1,298 @@
 <html>
-	<head>
-		<title>Tello client. NodeTello.</title>
-		<link rel="stylesheet" href="bootstrap.min.css">
-		<script type="text/javascript" src="Decoder.js"></script>
-		<script type="text/javascript" src="YUVCanvas.js"></script>
-		<script type="text/javascript" src="Player.js"></script>
-		<script type="text/javascript" src="face-api.js"></script>
-	</head>
-	<style>
-		video, canvas {
-			position: absolute;
-			top: 0;
-			left: 0;
-			width: 480px;
-			height: 360px;
-		}
-	</style>
-<body>
-<div class="container-fluid">
-	<div class="row"><div class="col-1">takeoff:</div><div class="col-11">Shift+Space</div></div>
-	<div class="row"><div class="col-1">land:</div><div class="col-11">Space</div></div>
-	<div class="row"><div class="col-1">yaw:</div><div class="col-11">A, D</div></div>
-	<div class="row"><div class="col-1">throttle:</div><div class="col-11">W, S</div></div>
-	<div class="row"><div class="col-1">pitch:</div><div class="col-11">Up Arrow, Down Arrow</div></div>
-	<div class="row"><div class="col-1">roll:</div><div class="col-11">Left Arrow, Right Arrow</div></div>
-	<div class="row">
-		<div class="col-6">
-			<div id="videoFeed">
-				<video id="webcamVideo"></video>
-				<canvas></canvas>
-			</div>
-		</div>
-		<div class="col-6">
-			<div id="settings">
-				<select class="settings ev" id="settings-ev">
-					<option value="-3.0">-3.0</option>
-					<option value="-2.7">-2.7</option>
-					<option value="-2.3">-2.3</option>
-					<option value="-2.0">-2.0</option>
-					<option value="-1.7">-1.7</option>
-					<option value="-1.3">-1.3</option>
-					<option value="-1.0">-1.0</option>
-					<option value="-0.7">-0.7</option>
-					<option value="-0.3">-0.3</option>
-					<option value="0.0" selected>0</option>
-					<option value="+0.3">+0.3</option>
-					<option value="+0.7">+0.7</option>
-					<option value="+1.0">+1.0</option>
-					<option value="+1.3">+1.3</option>
-					<option value="+1.7">+1.7</option>
-					<option value="+2.0">+2.0</option>
-					<option value="+2.3">+2.3</option>
-					<option value="+2.7">+2.7</option>
-					<option value="+3.0">+3.0</option>
-				</select>
-			</div>
-			<div id="telemetryFeed"></div>
-		</div>
-	</div>
-</div>
-
-<script>
-
-var FPS=30;
-var ws_video = false;
-var ws_telemetry = false; var telemetry_obj = document.getElementById("telemetryFeed");
-var c,ctx;
-var imgData = false;
-var h264_player = false;
-var h264_decoder = false;
-var kMap = { };
-var stickData = {
-	roll     : 0,
-	pitch    : 0,
-	throttle : 0,
-	yaw      : 0
-};
-
-const useWebcam = true;
-
-async function initFaceDetection() {
-	await faceapi.loadSsdMobilenetv1Model('models');
-    onPlay();
-}
-
-async function onPlay() {
-    const videoEl = document.querySelector('#videoFeed video');
-    const canvasEl = document.querySelector('#videoFeed canvas');
-
-    if (!canvasEl || !videoEl || videoEl.paused || videoEl.ended) {
-      return setTimeout(() => onPlay(), 1000);
+  <head>
+    <title>Tello client. NodeTello.</title>
+    <link rel="stylesheet" href="bootstrap.min.css" />
+    <script type="text/javascript" src="Decoder.js"></script>
+    <script type="text/javascript" src="YUVCanvas.js"></script>
+    <script type="text/javascript" src="Player.js"></script>
+    <script type="text/javascript" src="face-api.js"></script>
+  </head>
+  <style>
+    video,
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 480px;
+      height: 360px;
     }
+  </style>
+  <body>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-1">takeoff:</div>
+        <div class="col-11">Shift+Space</div>
+      </div>
+      <div class="row">
+        <div class="col-1">land:</div>
+        <div class="col-11">Space</div>
+      </div>
+      <div class="row">
+        <div class="col-1">yaw:</div>
+        <div class="col-11">A, D</div>
+      </div>
+      <div class="row">
+        <div class="col-1">throttle:</div>
+        <div class="col-11">W, S</div>
+      </div>
+      <div class="row">
+        <div class="col-1">pitch:</div>
+        <div class="col-11">Up Arrow, Down Arrow</div>
+      </div>
+      <div class="row">
+        <div class="col-1">roll:</div>
+        <div class="col-11">Left Arrow, Right Arrow</div>
+      </div>
+      <div class="row">
+        <div class="col-6">
+          <div id="videoFeed">
+            <video id="webcamVideo"></video>
+            <canvas></canvas>
+          </div>
+        </div>
+        <div class="col-6">
+          <div id="settings">
+            <select class="settings ev" id="settings-ev">
+              <option value="-3.0">-3.0</option>
+              <option value="-2.7">-2.7</option>
+              <option value="-2.3">-2.3</option>
+              <option value="-2.0">-2.0</option>
+              <option value="-1.7">-1.7</option>
+              <option value="-1.3">-1.3</option>
+              <option value="-1.0">-1.0</option>
+              <option value="-0.7">-0.7</option>
+              <option value="-0.3">-0.3</option>
+              <option value="0.0" selected>0</option>
+              <option value="+0.3">+0.3</option>
+              <option value="+0.7">+0.7</option>
+              <option value="+1.0">+1.0</option>
+              <option value="+1.3">+1.3</option>
+              <option value="+1.7">+1.7</option>
+              <option value="+2.0">+2.0</option>
+              <option value="+2.3">+2.3</option>
+              <option value="+2.7">+2.7</option>
+              <option value="+3.0">+3.0</option>
+            </select>
+          </div>
+          <div id="telemetryFeed"></div>
+        </div>
+      </div>
+    </div>
 
-    const detection = await faceapi.detectSingleFace(videoEl);
+    <script>
+      var FPS = 30;
+      var ws_video = false;
+      var ws_telemetry = false;
+      var telemetry_obj = document.getElementById("telemetryFeed");
+      var c, ctx;
+      var imgData = false;
+      var h264_player = false;
+      var h264_decoder = false;
+      var kMap = {};
+      var stickData = {
+        roll: 0,
+        pitch: 0,
+        throttle: 0,
+        yaw: 0,
+      };
 
-    if (detection) {
-      const dims = faceapi.matchDimensions(canvasEl, videoEl, true);
-      faceapi.draw.drawDetections(canvasEl, faceapi.resizeResults(detection, dims));
-    }
+      const useWebcam = true;
 
-    setTimeout(() => this.onPlay());
-}
+      async function initFaceDetection() {
+        await faceapi.loadSsdMobilenetv1Model("models");
+        onPlay();
+      }
 
+      async function onPlay() {
+        const videoEl = document.querySelector("#videoFeed video");
+        const canvasEl = document.querySelector("#videoFeed canvas");
 
-function initVideoFeedReceive() {
-	ws_video.send("f");
-}
+        if (!canvasEl || !videoEl || videoEl.paused || videoEl.ended) {
+          return setTimeout(() => onPlay(), 1000);
+        }
 
-function initTelemetryFeedReceive() {
-	ws_telemetry.send("t");
-}
+        const detection = await faceapi.detectSingleFace(videoEl);
 
-var toUint8Array = function(parStr){
-	var raw = parStr;
-	var rawLength = raw.length;
-	var array = new Uint8Array(new ArrayBuffer(rawLength));
+        if (detection) {
+          const dims = faceapi.matchDimensions(canvasEl, videoEl, true);
+          faceapi.draw.drawDetections(
+            canvasEl,
+            faceapi.resizeResults(detection, dims)
+          );
+        }
 
-	var i;
-	for(i = 0; i < rawLength; i++) {
-		array[i] = raw.charCodeAt(i);
-	}
-	return array;    
-};
+        setTimeout(() => this.onPlay());
+      }
 
-function processFrame(imgString) {
-	if (imgString.data!='false') {
-		h264_player.decode(toUint8Array(imgString.data));
-	} else {
-		console.log(imgString);
-	}
-}
+      function initVideoFeedReceive() {
+        ws_video.send("f");
+      }
 
-function processTelemetry(data) {
-	console.log(data);
-	telemetry_obj.innerHTML = data.data;
-}
+      function initTelemetryFeedReceive() {
+        ws_telemetry.send("t");
+      }
 
-function connect() {
-	try {
-		ws_video = new WebSocket("ws://127.0.0.1:8081/");
-		ws_video.onmessage = function (data) {
-			processFrame(data);
-		};
-		ws_video.onopen = function () {
-			initVideoFeedReceive();
-		};
-		ws_video.onerror = function () {
-			ws_video.close();
-		}
-	} catch (e) {
-		console.log("Error","Video", "reconnect");
-	}
-	
-	try {
-		ws_telemetry = new WebSocket("ws://127.0.0.1:8082/");
-		ws_telemetry.onmessage = function (data) {
-			processTelemetry(data);
-		};
-		ws_telemetry.onopen = function () {
-			initTelemetryFeedReceive();
-		};
-		ws_telemetry.onerror = function () {
-			ws_telemetry.close();
-		}
-	} catch (e) {
-		console.log("Error","Telemetry", "reconnect");
-	}
-}
+      var toUint8Array = function (parStr) {
+        var raw = parStr;
+        var rawLength = raw.length;
+        var array = new Uint8Array(new ArrayBuffer(rawLength));
 
+        var i;
+        for (i = 0; i < rawLength; i++) {
+          array[i] = raw.charCodeAt(i);
+        }
+        return array;
+      };
 
-function initCanvas() {
-	if (useWebcam) {
-		if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-			navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-			const videoEl = document.getElementById('webcamVideo');
-			videoEl.srcObject = stream;
-			videoEl.play();
-			});
-		}
-		return;
-	}
+      function processFrame(imgString) {
+        if (imgString.data != "false") {
+          h264_player.decode(toUint8Array(imgString.data));
+        } else {
+          console.log(imgString);
+        }
+      }
 
-	h264_player = new Player({
-		useWorker : true,
-		workerFile : "Decoder.js",
-		webgl: 'auto',
-		size: { width: 960, height: 720}
-	});
-	document.getElementById("videoFeed").appendChild(h264_player.canvas);
-}
+      function processTelemetry(data) {
+        console.log(data);
+        telemetry_obj.innerHTML = data.data;
+      }
 
-function initKeyboard() {
-	document.body.onkeydown = document.body.onkeyup = function (e) { 
-		e.preventDefault();
-		kMap[e.code] = (e.type=='keydown'?true:false); 
-		keyboardEvent(e);
-	};
-}
+      function connect() {
+        try {
+          ws_video = new WebSocket("ws://127.0.0.1:8081/");
+          ws_video.onmessage = function (data) {
+            processFrame(data);
+          };
+          ws_video.onopen = function () {
+            initVideoFeedReceive();
+          };
+          ws_video.onerror = function () {
+            ws_video.close();
+          };
+        } catch (e) {
+          console.log("Error", "Video", "reconnect");
+        }
 
+        try {
+          ws_telemetry = new WebSocket("ws://127.0.0.1:8082/");
+          ws_telemetry.onmessage = function (data) {
+            processTelemetry(data);
+          };
+          ws_telemetry.onopen = function () {
+            initTelemetryFeedReceive();
+          };
+          ws_telemetry.onerror = function () {
+            ws_telemetry.close();
+          };
+        } catch (e) {
+          console.log("Error", "Telemetry", "reconnect");
+        }
+      }
 
-var speed = 0.5;
-function keyboardEvent(e) {
-	if (kMap.Space === true && (kMap.ShiftLeft === true || kMap.ShiftRight === true)) {
-		kMap.Space = false;
-		sendCmd("takeoff", 0);
-	} else if (kMap.Space === true) {
-		sendCmd("land", 0);
-	}
-	if (kMap.KeyW === true || kMap.KeyA === true || kMap.KeyS === true || kMap.KeyD === true ||
-		kMap.ArrowUp === true || kMap.ArrowDown === true || kMap.ArrowLeft === true || kMap.ArrowRight === true) {
-			
-		stickData.yaw = speed*(kMap.KeyA === true?-1:(kMap.KeyD === true?1:0));
-		stickData.throttle = speed*(kMap.KeyS === true?-1:(kMap.KeyW === true?1:0));
-		stickData.roll = speed*(kMap.ArrowLeft === true?-1:(kMap.ArrowRight === true?1:0));
-		stickData.pitch = speed*(kMap.ArrowDown === true?-1:(kMap.ArrowUp === true?1:0));
-		
-		console.log(stickData);
-		sendCmd("stick", stickData);
-	} else {
-		stickData.yaw = 0;
-		stickData.throttle = 0;
-		stickData.roll = 0;
-		stickData.pitch = 0;
-		console.log(stickData);
-		sendCmd("stick", stickData);
-	}
-	return false;
-}
+      function initCanvas() {
+        if (useWebcam) {
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices
+              .getUserMedia({ video: true })
+              .then((stream) => {
+                const videoEl = document.getElementById("webcamVideo");
+                videoEl.srcObject = stream;
+                videoEl.play();
+              });
+          }
+          return;
+        }
 
+        h264_player = new Player({
+          useWorker: true,
+          workerFile: "Decoder.js",
+          webgl: "auto",
+          size: { width: 960, height: 720 },
+        });
+        document.getElementById("videoFeed").appendChild(h264_player.canvas);
+      }
 
-function initUI() {
-	// settings: exposure value
-	document.getElementById("settings-ev").onchange = function () {
-		sendCmd("ev",document.getElementById("settings-ev").value);
-	}
-}
+      function initKeyboard() {
+        document.body.onkeydown = document.body.onkeyup = function (e) {
+          e.preventDefault();
+          kMap[e.code] = e.type == "keydown" ? true : false;
+          keyboardEvent(e);
+        };
+      }
 
-function initPing() {
-	// ping backend every 0.5 seconds
-	setInterval(
-		function () {
-			sendCmd("ping", 0);
-		},
-		500
-	);
-}
+      var speed = 0.5;
+      function keyboardEvent(e) {
+        if (
+          kMap.Space === true &&
+          (kMap.ShiftLeft === true || kMap.ShiftRight === true)
+        ) {
+          kMap.Space = false;
+          sendCmd("takeoff", 0);
+        } else if (kMap.Space === true) {
+          sendCmd("land", 0);
+        }
+        if (
+          kMap.KeyW === true ||
+          kMap.KeyA === true ||
+          kMap.KeyS === true ||
+          kMap.KeyD === true ||
+          kMap.ArrowUp === true ||
+          kMap.ArrowDown === true ||
+          kMap.ArrowLeft === true ||
+          kMap.ArrowRight === true
+        ) {
+          stickData.yaw =
+            speed * (kMap.KeyA === true ? -1 : kMap.KeyD === true ? 1 : 0);
+          stickData.throttle =
+            speed * (kMap.KeyS === true ? -1 : kMap.KeyW === true ? 1 : 0);
+          stickData.roll =
+            speed *
+            (kMap.ArrowLeft === true ? -1 : kMap.ArrowRight === true ? 1 : 0);
+          stickData.pitch =
+            speed *
+            (kMap.ArrowDown === true ? -1 : kMap.ArrowUp === true ? 1 : 0);
 
-function sendCmd(_cmd, _value) {
-	if (ws_telemetry) {
-		ws_telemetry.send(JSON.stringify({ cmd: { cmd: _cmd, value: _value } }));
-	}
-}
+          console.log(stickData);
+          sendCmd("stick", stickData);
+        } else {
+          stickData.yaw = 0;
+          stickData.throttle = 0;
+          stickData.roll = 0;
+          stickData.pitch = 0;
+          console.log(stickData);
+          sendCmd("stick", stickData);
+        }
+        return false;
+      }
 
+      function initUI() {
+        // settings: exposure value
+        document.getElementById("settings-ev").onchange = function () {
+          sendCmd("ev", document.getElementById("settings-ev").value);
+        };
+      }
 
-initUI();
-initFaceDetection();
-initKeyboard();
-initCanvas();
-initPing();
-connect();
+      function initPing() {
+        // ping backend every 0.5 seconds
+        setInterval(function () {
+          sendCmd("ping", 0);
+        }, 500);
+      }
 
+      function sendCmd(_cmd, _value) {
+        if (ws_telemetry) {
+          ws_telemetry.send(
+            JSON.stringify({ cmd: { cmd: _cmd, value: _value } })
+          );
+        }
+      }
 
-</script>
-</body>
+      initUI();
+      initFaceDetection();
+      initKeyboard();
+      initCanvas();
+      initPing();
+      connect();
+    </script>
+  </body>
 </html>
