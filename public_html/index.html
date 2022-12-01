@@ -105,11 +105,12 @@
 
       const useWebcam = false;
 
-      const webcamVideoEl = document.querySelector("#videoFeed video#webcamVideo");
+      const webcamVideoEl = document.querySelector(
+        "#videoFeed video#webcamVideo"
+      );
       const canvasEl = document.querySelector("#videoFeed canvas#draw");
       const context = canvasEl.getContext("2d");
       const faceSizeEl = document.querySelector("#faceSize");
-      
 
       async function initFaceDetection() {
         await faceapi.loadSsdMobilenetv1Model("models");
@@ -121,56 +122,60 @@
       }
 
       async function onPlay() {
-
         const droneCamCanvasEl = document.querySelector(
           "#videoFeed canvas:not(#draw)"
         );
 
         if (useWebcam) {
-          if (!canvasEl || !webcamVideoEl || webcamVideoEl.paused || webcamVideoEl.ended) {
+          if (
+            !canvasEl ||
+            !webcamVideoEl ||
+            webcamVideoEl.paused ||
+            webcamVideoEl.ended
+          ) {
             return setTimeout(() => onPlay(), 1000);
           }
         } else if (!canvasEl || !droneCamCanvasEl) {
           return setTimeout(() => onPlay(), 1000);
         }
-       
+
         const detection = await faceapi.detectSingleFace(
           useWebcam ? webcamVideoEl : droneCamCanvasEl
         );
 
-        context.clearRect(
-          -canvasEl.width / 2,
-          -canvasEl.height / 2,
-          canvasEl.width,
-          canvasEl.height
-        );
-
         if (detection) {
-          // const dims = faceapi.matchDimensions(canvasEl, webcamVideoEl, true);
-          // faceapi.draw.drawDetections(
-          //   canvasEl,
-          //   faceapi.resizeResults(detection, dims)
-          // );
-
-          const relativeBox = detection.relativeBox;
-          const centerVectorOfDetectedFace = [
-            relativeBox.left + relativeBox.width / 2,
-            relativeBox.top + relativeBox.height / 2,
-          ];
-          this.relativeDistanceVector = [
-            centerVectorOfDetectedFace[0] - 0.5,
-            centerVectorOfDetectedFace[1] - 0.5,
-          ];
-          console.log(this.relativeDistanceVector);
-
-          drawDistanceVector(canvasEl, this.relativeDistanceVector);
+          context.clearRect(
+            -canvasEl.width / 2,
+            -canvasEl.height / 2,
+            canvasEl.width,
+            canvasEl.height
+          );
+          const { relativeBox, relativeDistanceVector, area } =
+            calculateDistanceVectors(detection);
+          
+          drawDistanceVector(canvasEl, relativeDistanceVector);
           drawSizeVector(canvasEl, relativeBox);
-
-          const area = relativeBox.width * relativeBox.height;
           faceSizeEl.innerText = area;
         }
 
-        setTimeout(() => this.onPlay());
+        setTimeout(() => onPlay());
+      }
+
+      function calculateDistanceVectors(detection) {
+        const relativeBox = detection.relativeBox;
+        const centerVectorOfDetectedFace = [
+          relativeBox.left + relativeBox.width / 2,
+          relativeBox.top + relativeBox.height / 2,
+        ];
+        relativeDistanceVector = [
+          centerVectorOfDetectedFace[0] - 0.5,
+          centerVectorOfDetectedFace[1] - 0.5,
+        ];
+        console.log("relativeDistanceVector", relativeDistanceVector);
+
+        const area = relativeBox.width * relativeBox.height;
+
+        return { relativeBox, relativeDistanceVector, area };
       }
 
       function drawDistanceVector(canvas, relativeDistanceVector) {
@@ -339,14 +344,12 @@
             speed *
             (kMap.ArrowDown === true ? -1 : kMap.ArrowUp === true ? 1 : 0);
 
-          console.log(stickData);
           sendCmd("stick", stickData);
         } else {
           stickData.yaw = 0;
           stickData.throttle = 0;
           stickData.roll = 0;
           stickData.pitch = 0;
-          console.log(stickData);
           sendCmd("stick", stickData);
         }
         return false;
@@ -367,6 +370,7 @@
       }
 
       function sendCmd(_cmd, _value) {
+        console.log(_cmd, _value);
         if (ws_telemetry) {
           ws_telemetry.send(
             JSON.stringify({ cmd: { cmd: _cmd, value: _value } })
