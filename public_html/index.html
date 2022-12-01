@@ -50,7 +50,8 @@
             <canvas></canvas>
           </div>
         </div>
-        <div class="col-6">
+        <div class="col-4">Face size (distance from camera): <span id="faceSize">-</span></div>
+        <div class="col-2">
           <div id="settings">
             <select class="settings ev" id="settings-ev">
               <option value="-3.0">-3.0</option>
@@ -98,30 +99,99 @@
 
       const useWebcam = true;
 
+      const videoEl = document.querySelector("#videoFeed video");
+      const canvasEl = document.querySelector("#videoFeed canvas");
+      const context = canvasEl.getContext("2d");
+      const faceSizeEl = document.querySelector("#faceSize");
+
       async function initFaceDetection() {
         await faceapi.loadSsdMobilenetv1Model("models");
+
+        // set the canvas origin (0,0) to center canvas
+        context.translate(canvasEl.width / 2, canvasEl.height / 2);
+
         onPlay();
       }
 
       async function onPlay() {
-        const videoEl = document.querySelector("#videoFeed video");
-        const canvasEl = document.querySelector("#videoFeed canvas");
-
         if (!canvasEl || !videoEl || videoEl.paused || videoEl.ended) {
           return setTimeout(() => onPlay(), 1000);
         }
 
         const detection = await faceapi.detectSingleFace(videoEl);
 
+        context.clearRect(
+          -canvasEl.width / 2,
+          -canvasEl.height / 2,
+          canvasEl.width,
+          canvasEl.height
+        );
+
         if (detection) {
-          const dims = faceapi.matchDimensions(canvasEl, videoEl, true);
-          faceapi.draw.drawDetections(
-            canvasEl,
-            faceapi.resizeResults(detection, dims)
-          );
+          // const dims = faceapi.matchDimensions(canvasEl, videoEl, true);
+          // faceapi.draw.drawDetections(
+          //   canvasEl,
+          //   faceapi.resizeResults(detection, dims)
+          // );
+
+          const relativeBox = detection.relativeBox;
+          const centerVectorOfDetectedFace = [
+            relativeBox.left + relativeBox.width / 2,
+            relativeBox.top + relativeBox.height / 2,
+          ];
+          this.relativeDistanceVector = [
+            centerVectorOfDetectedFace[0] - 0.5,
+            centerVectorOfDetectedFace[1] - 0.5,
+          ];
+          console.log(this.relativeDistanceVector);
+          
+          drawDistanceVector(canvasEl, this.relativeDistanceVector);
+          drawSizeVector(canvasEl, relativeBox);
+          
+          const area = relativeBox.width * relativeBox.height;
+          faceSizeEl.innerText = area;
         }
 
         setTimeout(() => this.onPlay());
+      }
+
+      function drawDistanceVector(canvas, relativeDistanceVector) {
+        const context = canvas.getContext("2d");
+        context.strokeStyle = "red";
+        context.beginPath();
+        context.moveTo(0, 0);
+        context.lineTo(
+          relativeDistanceVector[0] * canvas.width,
+          relativeDistanceVector[1] * canvas.height
+        );
+        context.stroke();
+      }
+
+      function drawSizeVector(canvas, relativeBox) {
+        const context = canvas.getContext("2d");
+        context.strokeStyle = "pink";
+        context.beginPath();
+        context.moveTo(
+          (relativeBox.topLeft.x - 0.5) * canvas.width,
+          (relativeBox.topLeft.y - 0.5) * canvas.height
+        );
+        context.lineTo(
+          (relativeBox.topRight.x - 0.5) * canvas.width,
+          (relativeBox.topRight.y - 0.5) * canvas.height
+        );
+        context.lineTo(
+          (relativeBox.bottomRight.x - 0.5) * canvas.width,
+          (relativeBox.bottomRight.y - 0.5) * canvas.height
+        );
+        context.lineTo(
+          (relativeBox.bottomLeft.x - 0.5) * canvas.width,
+          (relativeBox.bottomLeft.y - 0.5) * canvas.height
+        );
+        context.lineTo(
+          (relativeBox.topLeft.x - 0.5) * canvas.width,
+          (relativeBox.topLeft.y - 0.5) * canvas.height
+        );
+        context.stroke();
       }
 
       function initVideoFeedReceive() {
