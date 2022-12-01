@@ -163,10 +163,11 @@
           drawSizeVector(canvasEl, relativeBox);
           faceSizeEl.innerText = area;
 
-          stickData.throttle = controlThrottle(relativeDistanceVector);
           const { roll, yaw } = controlRollAndYaw(relativeDistanceVector);
+          stickData.throttle = controlThrottle(relativeDistanceVector);
           stickData.roll = roll;
           stickData.yaw = yaw;
+          stickData.pitch = controlPitch(area);
           sendCmd("stick", stickData);
         } else {
           notFoundCounter++;
@@ -178,13 +179,29 @@
         setTimeout(() => onPlay());
       }
 
+      function controlPitch(area) {
+        const areaThresholdMin = 0.045;
+        const areaThresholdMax = 0.055;
+        const pitchWeight = 0.5;
+        if (areaThresholdMin <= area && area <= areaThresholdMax) {
+          return 0;
+        } else {
+          return (
+            pitchWeight *
+            speed *
+            (area > areaThresholdMax ? -1 : area < areaThresholdMin ? 1 : 0)
+          );
+        }
+      }
+
       function controlRollAndYaw(relativeDistanceVector) {
         const distanceXThresholdMin = -0.15;
         const distanceXThresholdMax = 0.15;
         const yawWeight = 0.7;
         const rollWeight = 0.3;
 
-        let yaw = 0, roll = 0;
+        let yaw = 0,
+          roll = 0;
 
         if (
           relativeDistanceVector[0] < distanceXThresholdMin ||
