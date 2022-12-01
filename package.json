@@ -1,0 +1,27 @@
+{
+  "name": "drone-ai-xp",
+  "version": "0.0.0",
+  "description": "Personal experiment with nodetello (Ryze Tello Node.JS lib based on PyTello)",
+  "main": "app.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "drone",
+    "ryze",
+    "tello",
+    "node.js",
+    "video stream",
+    "h264",
+    "face-api.js"
+  ],
+  "author": "Attila Olah",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^5.2.1"
+  }
+}
