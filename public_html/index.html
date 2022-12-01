@@ -16,7 +16,9 @@
 	<div class="row"><div class="col-1">roll:</div><div class="col-11">Left Arrow, Right Arrow</div></div>
 	<div class="row">
 		<div class="col-6">
-			<div id="videoFeed"></div>
+			<div id="videoFeed">
+				<video id="webcamVideo"></video>
+			</div>
 		</div>
 		<div class="col-6">
 			<div id="settings">
@@ -63,6 +65,8 @@ var stickData = {
 	throttle : 0,
 	yaw      : 0
 };
+
+const useWebcam = true;
 
 
 function initVideoFeedReceive() {
@@ -132,6 +136,17 @@ function connect() {
 
 
 function initCanvas() {
+	if (useWebcam) {
+		if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+			navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+			const videoEl = document.getElementById('webcamVideo');
+			videoEl.srcObject = stream;
+			videoEl.play();
+			});
+		}
+		return;
+	}
+
 	h264_player = new Player({
 		useWorker : true,
 		workerFile : "Decoder.js",
