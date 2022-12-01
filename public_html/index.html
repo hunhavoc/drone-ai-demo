@@ -5,7 +5,17 @@
 		<script type="text/javascript" src="Decoder.js"></script>
 		<script type="text/javascript" src="YUVCanvas.js"></script>
 		<script type="text/javascript" src="Player.js"></script>
+		<script type="text/javascript" src="face-api.js"></script>
 	</head>
+	<style>
+		video, canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 480px;
+			height: 360px;
+		}
+	</style>
 <body>
 <div class="container-fluid">
 	<div class="row"><div class="col-1">takeoff:</div><div class="col-11">Shift+Space</div></div>
@@ -18,6 +28,7 @@
 		<div class="col-6">
 			<div id="videoFeed">
 				<video id="webcamVideo"></video>
+				<canvas></canvas>
 			</div>
 		</div>
 		<div class="col-6">
@@ -67,6 +78,29 @@ var stickData = {
 };
 
 const useWebcam = true;
+
+async function initFaceDetection() {
+	await faceapi.loadSsdMobilenetv1Model('models');
+    onPlay();
+}
+
+async function onPlay() {
+    const videoEl = document.querySelector('#videoFeed video');
+    const canvasEl = document.querySelector('#videoFeed canvas');
+
+    if (!canvasEl || !videoEl || videoEl.paused || videoEl.ended) {
+      return setTimeout(() => onPlay(), 1000);
+    }
+
+    const detection = await faceapi.detectSingleFace(videoEl);
+
+    if (detection) {
+      const dims = faceapi.matchDimensions(canvasEl, videoEl, true);
+      faceapi.draw.drawDetections(canvasEl, faceapi.resizeResults(detection, dims));
+    }
+
+    setTimeout(() => this.onPlay());
+}
 
 
 function initVideoFeedReceive() {
@@ -220,6 +254,7 @@ function sendCmd(_cmd, _value) {
 
 
 initUI();
+initFaceDetection();
 initKeyboard();
 initCanvas();
 initPing();
