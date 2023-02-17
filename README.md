@@ -3,7 +3,7 @@ Based on [nodetello](https://github.com/SovGVD/nodetello) and [face-api.js](http
 
 This repository was created to provide a demonstration for the article linked below. Please note that the software in this repository is currently in development and is provided "as is." Use caution when working with this software and always prioritize safety. Remember to remove props before testing.
 
-Article: TODO medium link
+Article: [here](https://medium.com/supercharges-mobile-product-guide/unleashing-the-potential-of-ai-for-teaching-drones-making-advanced-technologies-accessible-to-all-a75afa7240f7)
 
 ## Prerequisites
 
